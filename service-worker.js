@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stock-finder-v1';
+const CACHE_NAME = 'stock-finder-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -25,14 +25,34 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
+  const req = event.request;
+  const isHTML = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
+
+  // Page itself: always try the network first, so you get the latest
+  // version when you have signal. Falls back to the cached copy if offline.
+  if (isHTML) {
+    event.respondWith(
+      fetch(req)
         .then((res) => {
-          if (event.request.method === 'GET' && res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Everything else (icons, the spreadsheet library, etc.): cache-first,
+  // since those rarely change and this keeps things fast/offline-friendly.
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req)
+        .then((res) => {
+          if (req.method === 'GET' && res && res.status === 200) {
             const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
           }
           return res;
         })

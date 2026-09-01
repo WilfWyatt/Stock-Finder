@@ -210,9 +210,89 @@
     margin-left:6px;
     vertical-align:middle;
   }
+
+  @property --mx { syntax: '<length>'; inherits: true; initial-value: 32px; }
+  @property --my { syntax: '<length>'; inherits: true; initial-value: 115px; }
+  @property --mr { syntax: '<length>'; inherits: true; initial-value: 26px; }
+
+  .splash{
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    animation: splash-out 0.5s ease 1.7s forwards;
+  }
+
+  .splash-stage{
+    position:relative;
+    width:160px;
+    height:160px;
+  }
+
+  .warehouse-icon{
+    position:absolute;
+    inset:0;
+    -webkit-mask-image: radial-gradient(circle var(--mr) at var(--mx) var(--my), black 55%, transparent 65%);
+    mask-image: radial-gradient(circle var(--mr) at var(--mx) var(--my), black 55%, transparent 65%);
+    animation: reveal-mask 1.5s cubic-bezier(.45,0,.2,1) forwards;
+  }
+
+  .glass-wrap{
+    position:absolute;
+    top:0; left:0;
+    width:56px;
+    height:56px;
+    animation: glass-move 1.5s cubic-bezier(.45,0,.2,1) forwards;
+  }
+
+  @keyframes reveal-mask{
+    0%   { --mx:32px;  --my:115px; --mr:26px; }
+    25%  { --mx:118px; --my:42px;  --mr:26px; }
+    50%  { --mx:48px;  --my:35px;  --mr:26px; }
+    75%  { --mx:112px; --my:118px; --mr:26px; }
+    100% { --mx:80px;  --my:80px;  --mr:190px; }
+  }
+
+  @keyframes glass-move{
+    0%   { transform: translate(10px, 93px); opacity:1; }
+    25%  { transform: translate(96px, 20px); }
+    50%  { transform: translate(26px, 13px); }
+    75%  { transform: translate(90px, 96px); }
+    88%  { transform: translate(58px, 58px); opacity:1; }
+    100% { transform: translate(58px, 58px); opacity:0; }
+  }
+
+  @keyframes splash-out{
+    to{ opacity:0; visibility:hidden; }
+  }
 </style>
 </head>
 <body>
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-stage">
+    <svg class="warehouse-icon" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#4FD6C0" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M38 130 L38 78 L28 78 L80 20 L132 78 L122 78 L122 130"/>
+        <line x1="58" y1="48" x2="102" y2="48"/>
+        <line x1="58" y1="62" x2="102" y2="62"/>
+        <rect x="52" y="88" width="56" height="42"/>
+        <rect x="70" y="92" width="19" height="18"/>
+        <rect x="55" y="110" width="19" height="18"/>
+        <rect x="85" y="110" width="19" height="18"/>
+      </g>
+    </svg>
+    <div class="glass-wrap">
+      <svg class="glass-icon" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="14" fill="none" stroke="#F2A93B" stroke-width="6"/>
+        <circle cx="22" cy="22" r="5" fill="#4FD6C0"/>
+        <line x1="32" y1="32" x2="46" y2="46" stroke="#F2A93B" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+</div>
 <div class="app">
   <header>
     <div class="titlebar">

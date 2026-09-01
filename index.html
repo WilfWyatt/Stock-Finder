@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#14171A">
+<title>Stock Finder</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#14171A;
+    --panel:#1C2024;
+    --panel-alt:#22262B;
+    --border:#2C3238;
+    --text:#E7E5E0;
+    --text-dim:#8A9099;
+    --accent:#F2A93B;
+    --accent-dim:#C98A2E;
+    --badge:#4FD6C0;
+    --badge-text:#0B1512;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+
+  header{
+    padding:20px 18px 14px;
+    border-bottom:1px solid var(--border);
+  }
+
+  .titlebar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+
+  h1{
+    font-size:19px;
+    font-weight:600;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+
+  .status{
+    font-size:12px;
+    color:var(--text-dim);
+    font-family:'IBM Plex Mono', monospace;
+    text-align:right;
+    max-width:180px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .search-row{
+    display:flex;
+    gap:8px;
+  }
+
+  .search-row.secondary{
+    margin-top:8px;
+  }
+
+  input[type="search"]{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px;
+    padding:12px 14px;
+    outline:none;
+    min-width:0;
+  }
+
+  input[type="search"]:focus{
+    border-color:var(--accent-dim);
+  }
+
+  input[type="search"]::placeholder{
+    color:var(--text-dim);
+  }
+
+  .load-btn{
+    background:var(--panel-alt);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:8px;
+    padding:0 14px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+
+  .load-btn:active{
+    background:var(--border);
+  }
+
+  #file-input{ display:none; }
+
+  main{
+    flex:1;
+    overflow-y:auto;
+    padding:6px 0 40px;
+  }
+
+  .count-row{
+    padding:12px 18px 4px;
+    font-size:12px;
+    color:var(--text-dim);
+    font-family:'IBM Plex Mono', monospace;
+  }
+
+  .row{
+    padding:13px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+  }
+
+  .row-main{ min-width:0; }
+
+  .code-line{
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+
+  .code{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:14.5px;
+    color:var(--accent);
+    letter-spacing:0.3px;
+  }
+
+  .uom-badge,
+  .loc-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:13px;
+    color:var(--badge-text);
+    background:var(--badge);
+    border-radius:7px;
+    padding:5px 10px;
+    line-height:1.3;
+    flex-shrink:0;
+    white-space:nowrap;
+  }
+
+  .name{
+    font-size:13.5px;
+    color:var(--text);
+    margin-top:3px;
+    line-height:1.4;
+  }
+
+
+
+  .empty{
+    padding:60px 30px;
+    text-align:center;
+    color:var(--text-dim);
+    font-size:14px;
+    line-height:1.6;
+  }
+
+  .empty strong{
+    display:block;
+    color:var(--text);
+    font-size:15px;
+    margin-bottom:6px;
+    font-weight:600;
+  }
+
+  .demo-tag{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--bg);
+    background:var(--accent);
+    padding:2px 6px;
+    border-radius:4px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="titlebar">
+      <h1>Stock Finder</h1>
+      <span class="status" id="status">demo data<span class="demo-tag">SAMPLE</span></span>
+    </div>
+    <div class="search-row">
+      <input type="search" id="search" placeholder="Search code or description..." autocomplete="off">
+      <button class="load-btn" id="load-trigger">Load File</button>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+    </div>
+    <div class="search-row secondary">
+      <input type="search" id="search-location" placeholder="Search location..." autocomplete="off">
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="count-row" id="count-row"></div>
+    <div id="results"></div>
+  </main>
+</div>
+
+<script>
+  // ---- Column mapping: matches the Pick Spreadsheet headers ----
+  // Locator | Item | Item Description | Rev | Primary UOM | On-hand
+  const COLUMNS = {
+    code: 'Item',
+    name: 'Item Description',
+    location: 'Locator',
+    uom: 'Primary UOM'
+  };
+
+  // A handful of real-shaped rows so the app is usable before you load your file
+  const SAMPLE_ROWS = [
+    { Locator: 'AA.0.0.026', Item: 'BTJ092', 'Item Description': 'GLOVE RUBBER LARGE GREEN : 3311', 'Primary UOM': 'PR' },
+    { Locator: 'AA.0.0.163', Item: 'PWB106', 'Item Description': 'BATTERY ALKALINE AA 1.5 VOLT LR6 MN1500 HIGH PERFORMANCE (BOX 10)', 'Primary UOM': 'BOX' },
+    { Locator: 'AA.0.0.181', Item: 'FSP630', 'Item Description': 'CANNULA IV OVER NEEDLE SAFETY 17G X 45MM WHITE PORTED WINGED PUR', 'Primary UOM': 'EA' },
+    { Locator: 'BB.0.0.017', Item: 'BWM231', 'Item Description': 'MASK FACE SURGICAL PLEATED EAR LOOP TYPE IIR (BOX 50)', 'Primary UOM': 'BOX' },
+    { Locator: 'SS.0.0.005', Item: 'FTE122', 'Item Description': 'GLOVE EXAMINATION NITRILE POWDER FREE LARGE (BOX 100)', 'Primary UOM': 'BOX' }
+  ];
+
+  let items = [];
+  const searchEl = document.getElementById('search');
+  const searchLocationEl = document.getElementById('search-location');
+  const resultsEl = document.getElementById('results');
+  const countRowEl = document.getElementById('count-row');
+  const statusEl = document.getElementById('status');
+  const loadTrigger = document.getElementById('load-trigger');
+  const fileInput = document.getElementById('file-input');
+
+  function rowsToItems(rows){
+    return rows.map(r => ({
+      code: String(r[COLUMNS.code] ?? '').trim(),
+      name: String(r[COLUMNS.name] ?? '').trim(),
+      location: String(r[COLUMNS.location] ?? '').trim(),
+      uom: String(r[COLUMNS.uom] ?? '').trim()
+    })).filter(i => i.code || i.name);
+  }
+
+  function parseSpreadsheet(arrayBuffer){
+    const wb = XLSX.read(arrayBuffer, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    return rowsToItems(rows);
+  }
+
+  function render(list){
+    if(items.length === 0){
+      resultsEl.innerHTML = `<div class="empty"><strong>No file loaded</strong>Load your pick spreadsheet to start searching.</div>`;
+      countRowEl.textContent = '';
+      return;
+    }
+    if(list.length === 0){
+      resultsEl.innerHTML = `<div class="empty"><strong>No matches</strong>Try a different code, description or location.</div>`;
+      countRowEl.textContent = '';
+      return;
+    }
+    countRowEl.textContent = `${list.length} of ${items.length} items`;
+    resultsEl.innerHTML = list.map(i => `
+      <div class="row">
+        <div class="row-main">
+          <div class="code-line">
+            <span class="code">${escapeHTML(i.code)}</span>
+            ${i.uom ? `<span class="uom-badge">${escapeHTML(i.uom)}</span>` : ''}
+          </div>
+          <div class="name">${escapeHTML(i.name)}</div>
+        </div>
+        ${i.location ? `<div class="loc-badge">${escapeHTML(i.location)}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function escapeHTML(str){
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function doSearch(){
+    const q = searchEl.value.trim().toLowerCase();
+    const loc = searchLocationEl.value.trim().toLowerCase();
+    let filtered = items;
+    if(q){
+      filtered = filtered.filter(i => i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q));
+    }
+    if(loc){
+      filtered = filtered.filter(i => i.location.toLowerCase().includes(loc));
+    }
+    render(filtered);
+  }
+
+  function loadItems(list, label){
+    items = list;
+    statusEl.innerHTML = label;
+    doSearch();
+  }
+
+  searchEl.addEventListener('input', doSearch);
+  searchLocationEl.addEventListener('input', doSearch);
+  loadTrigger.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const parsed = parseSpreadsheet(evt.target.result);
+        if(parsed.length === 0){
+          throw new Error('No rows found — check the column headers match.');
+        }
+        loadItems(parsed, file.name);
+      }catch(err){
+        statusEl.textContent = 'Load failed';
+        resultsEl.innerHTML = `<div class="empty"><strong>Couldn't read that file</strong>${escapeHTML(err.message)}</div>`;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // start with sample data so the app is usable immediately
+  loadItems(rowsToItems(SAMPLE_ROWS), 'demo data<span class="demo-tag">SAMPLE</span>');
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>

@@ -492,6 +492,55 @@
   const scanCloseEl = document.getElementById('scan-close');
   let html5QrScanner = null;
 
+  // ---- Sound: tiny generated tones, no audio files needed ----
+  let audioCtx = null;
+  function getAudioContext(){
+    if(!audioCtx){
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if(!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(() => {});
+    }
+    return audioCtx;
+  }
+  // Unlock audio on the very first tap anywhere, so sounds triggered later
+  // (e.g. from an async scan callback) are reliably audible.
+  document.addEventListener('pointerdown', () => getAudioContext(), { once: true });
+
+  function playTone({freq, duration = 150, type = 'sine', volume = 0.18, delay = 0}){
+    const ctx = getAudioContext();
+    if(!ctx) return;
+    try{
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(volume, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration / 1000);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration / 1000 + 0.03);
+    }catch(e){}
+  }
+
+  function playScanBeep(){
+    playTone({ freq: 1600, duration: 100, volume: 0.2 });
+  }
+
+  function playNoMatchTone(){
+    playTone({ freq: 210, duration: 180, volume: 0.12 });
+  }
+
+  function playSplashFlourish(){
+    playTone({ freq: 523.25, duration: 110, volume: 0.15, delay: 0 });
+    playTone({ freq: 659.25, duration: 110, volume: 0.15, delay: 0.09 });
+    playTone({ freq: 783.99, duration: 170, volume: 0.16, delay: 0.18 });
+  }
+
   function rowsToItems(rows){
     return rows.map(r => ({
       code: String(r[COLUMNS.code] ?? '').trim(),
@@ -508,17 +557,23 @@
     return rowsToItems(rows);
   }
 
+  let wasNoMatch = false;
+
   function render(list){
     if(items.length === 0){
       resultsEl.innerHTML = `<div class="empty"><strong>No file loaded</strong>Load your pick spreadsheet to start searching.</div>`;
       countRowEl.textContent = '';
+      wasNoMatch = false;
       return;
     }
     if(list.length === 0){
       resultsEl.innerHTML = `<div class="empty"><strong>No matches</strong>Try a different code, description or location.</div>`;
       countRowEl.textContent = '';
+      if(!wasNoMatch) playNoMatchTone();
+      wasNoMatch = true;
       return;
     }
+    wasNoMatch = false;
     countRowEl.textContent = `${list.length} of ${items.length} items`;
     resultsEl.innerHTML = list.map(i => `
       <div class="row">
@@ -614,6 +669,7 @@
 
   function onScanSuccess(decodedText){
     stopScan();
+    playScanBeep();
     if(decodedText.indexOf(LOCATION_QR_PREFIX) === 0){
       searchLocationEl.value = decodedText.slice(LOCATION_QR_PREFIX.length);
     } else if(decodedText.indexOf(ITEM_SCAN_PREFIX) === 0){
@@ -655,6 +711,12 @@
 
   // start with sample data so the app is usable immediately
   loadItems(rowsToItems(SAMPLE_ROWS), 'demo data<span class="demo-tag">SAMPLE</span>');
+
+  // Timed to land as the splash reveal animation finishes (~1.5-1.7s in).
+  // May be silently blocked by the browser on the very first open or two
+  // (autoplay policy) until it's seen you interact with the app at least
+  // once — the animation itself always plays regardless.
+  setTimeout(playSplashFlourish, 1300);
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

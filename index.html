@@ -366,6 +366,16 @@
   .scan-btn svg{ width:18px; height:18px; }
   .scan-btn:active{ background:var(--border); }
 
+  .scan-btn.listening{
+    background:var(--accent);
+    color:var(--bg);
+    animation:mic-pulse 1s ease-in-out infinite;
+  }
+  @keyframes mic-pulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.5; }
+  }
+
   #scan-region{
     width:240px;
     max-width:100%;
@@ -405,6 +415,9 @@
     </div>
     <div class="search-row">
       <input type="search" id="search" placeholder="Search code or description..." autocomplete="off">
+      <button class="scan-btn" id="mic-trigger" aria-label="Search by voice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
       <button class="load-btn" id="load-trigger">Load File</button>
       <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
     </div>
@@ -490,6 +503,7 @@
   const scanOverlayEl = document.getElementById('scan-overlay');
   const scanHintEl = document.getElementById('scan-hint');
   const scanCloseEl = document.getElementById('scan-close');
+  const micTrigger = document.getElementById('mic-trigger');
   let html5QrScanner = null;
 
   // ---- Sound: tiny generated tones, no audio files needed ----
@@ -685,6 +699,41 @@
   scanOverlayEl.addEventListener('click', (e) => {
     if(e.target === scanOverlayEl) stopScan();
   });
+
+  // ---- Voice search (code/description field only — spoken location
+  // codes like "CC.0.0.020" don't transcribe reliably) ----
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let listening = false;
+
+  function startVoiceSearch(){
+    if(!SpeechRec) return;
+    if(listening){
+      recognition && recognition.stop();
+      return;
+    }
+    recognition = new SpeechRec();
+    recognition.lang = 'en-GB';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      listening = true;
+      micTrigger.classList.add('listening');
+    };
+    recognition.onresult = (e) => {
+      searchEl.value = e.results[0][0].transcript;
+      doSearch();
+    };
+    recognition.onerror = () => {};
+    recognition.onend = () => {
+      listening = false;
+      micTrigger.classList.remove('listening');
+    };
+    recognition.start();
+  }
+
+  micTrigger.addEventListener('click', startVoiceSearch);
 
   searchEl.addEventListener('input', doSearch);
   searchLocationEl.addEventListener('input', doSearch);

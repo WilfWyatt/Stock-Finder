@@ -702,6 +702,16 @@
 
   // ---- Voice search (code/description field only — spoken location
   // codes like "CC.0.0.020" don't transcribe reliably) ----
+  // Speech recognition tends to insert a space at letter/digit boundaries
+  // (e.g. "MXA085" comes through as "MXA 085") and never capitalises —
+  // this closes those gaps and uppercases for consistency with how codes
+  // are shown everywhere else in the app.
+  function cleanVoiceText(text){
+    let t = text.trim().toUpperCase();
+    t = t.replace(/([A-Z])\s+(\d)/g, '$1$2').replace(/(\d)\s+([A-Z])/g, '$1$2');
+    return t;
+  }
+
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition = null;
   let listening = false;
@@ -722,7 +732,7 @@
       micTrigger.classList.add('listening');
     };
     recognition.onresult = (e) => {
-      searchEl.value = e.results[0][0].transcript;
+      searchEl.value = cleanVoiceText(e.results[0][0].transcript);
       doSearch();
     };
     recognition.onerror = () => {};

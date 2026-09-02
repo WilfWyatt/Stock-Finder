@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stock-finder-v3';
+const CACHE_NAME = 'stock-finder-v4';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,8 @@ const CORE_ASSETS = [
   './icon-192.png',
   './icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
 ];
 
 self.addEventListener('install', (event) => {

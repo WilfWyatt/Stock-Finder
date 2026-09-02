@@ -455,6 +455,14 @@
   // aisle/zone ever decodes with a different prefix, update this constant.
   const LOCATION_QR_PREFIX = '1LPICK#';
 
+  // Item barcodes on the pallet/LPN labels (the Code 128 ones, not the shelf
+  // QR tags) come out with a leading "P" that isn't shown in the printed
+  // "Item No" text — e.g. scanning "EVE063" actually decodes as "PEVE063".
+  // Stripping just the first character removes that system prefix.
+  // Based on a handful of scans so far — flag it if a different prefix
+  // letter ever turns up on a different label type.
+  const ITEM_SCAN_PREFIX = 'P';
+
   const QR_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="14" width="2" height="2"/></svg>`;
 
   // A handful of real-shaped rows so the app is usable before you load your file
@@ -608,6 +616,8 @@
     stopScan();
     if(decodedText.indexOf(LOCATION_QR_PREFIX) === 0){
       searchLocationEl.value = decodedText.slice(LOCATION_QR_PREFIX.length);
+    } else if(decodedText.indexOf(ITEM_SCAN_PREFIX) === 0){
+      searchEl.value = decodedText.slice(ITEM_SCAN_PREFIX.length);
     } else {
       searchEl.value = decodedText;
     }

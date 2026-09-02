@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
@@ -268,6 +269,85 @@
   @keyframes splash-out{
     to{ opacity:0; visibility:hidden; }
   }
+
+  .code-line{ flex-wrap:wrap; }
+
+  .qr-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:23px;
+    height:23px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:var(--panel-alt);
+    color:var(--text-dim);
+    flex-shrink:0;
+    padding:0;
+    cursor:pointer;
+  }
+  .qr-btn svg{ width:13px; height:13px; }
+  .qr-btn:active{ background:var(--border); }
+
+  .loc-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+    flex-shrink:0;
+  }
+
+  .qr-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.78);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:500;
+    padding:24px;
+  }
+  .qr-overlay.hidden{ display:none; }
+
+  .qr-card{
+    background:#F5F4F0;
+    border-radius:16px;
+    padding:22px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    max-width:280px;
+    width:100%;
+  }
+  #qr-canvas-holder{
+    width:220px;
+    height:220px;
+    background:#fff;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .qr-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:#14171A;
+    text-align:center;
+    word-break:break-all;
+  }
+  .qr-close{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:#14171A;
+    background:#E2DFD6;
+    border:none;
+    border-radius:8px;
+    padding:9px 20px;
+    cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -315,6 +395,14 @@
   </main>
 </div>
 
+<div class="qr-overlay hidden" id="qr-overlay">
+  <div class="qr-card">
+    <div id="qr-canvas-holder"></div>
+    <div class="qr-label" id="qr-label"></div>
+    <button class="qr-close" id="qr-close">Close</button>
+  </div>
+</div>
+
 <script>
   // ---- Column mapping: matches the Pick Spreadsheet headers ----
   // Locator | Item | Item Description | Rev | Primary UOM | On-hand
@@ -324,6 +412,15 @@
     location: 'Locator',
     uom: 'Primary UOM'
   };
+
+  // ---- QR format: matches your warehouse's real labels ----
+  // Item QR = just the bare item code (confirmed from a real label, e.g. "MXA085")
+  // Location QR = a prefix + the locator text (confirmed from a real label: "1LPICK#CC.0.0.020")
+  // Only tested against one location label so far — if a QR from a different
+  // aisle/zone ever decodes with a different prefix, update this constant.
+  const LOCATION_QR_PREFIX = '1LPICK#';
+
+  const QR_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="14" width="2" height="2"/></svg>`;
 
   // A handful of real-shaped rows so the app is usable before you load your file
   const SAMPLE_ROWS = [
@@ -342,6 +439,10 @@
   const statusEl = document.getElementById('status');
   const loadTrigger = document.getElementById('load-trigger');
   const fileInput = document.getElementById('file-input');
+  const qrOverlayEl = document.getElementById('qr-overlay');
+  const qrHolderEl = document.getElementById('qr-canvas-holder');
+  const qrLabelEl = document.getElementById('qr-label');
+  const qrCloseEl = document.getElementById('qr-close');
 
   function rowsToItems(rows){
     return rows.map(r => ({
@@ -377,10 +478,15 @@
           <div class="code-line">
             <span class="code">${escapeHTML(i.code)}</span>
             ${i.uom ? `<span class="uom-badge">${escapeHTML(i.uom)}</span>` : ''}
+            ${i.code ? `<button class="qr-btn" data-qr="${escapeHTML(i.code)}" aria-label="Show QR for item code">${QR_ICON_SVG}</button>` : ''}
           </div>
           <div class="name">${escapeHTML(i.name)}</div>
         </div>
-        ${i.location ? `<div class="loc-badge">${escapeHTML(i.location)}</div>` : ''}
+        ${i.location ? `
+        <div class="loc-wrap">
+          <div class="loc-badge">${escapeHTML(i.location)}</div>
+          <button class="qr-btn" data-qr="${escapeHTML(LOCATION_QR_PREFIX + i.location)}" aria-label="Show QR for location">${QR_ICON_SVG}</button>
+        </div>` : ''}
       </div>
     `).join('');
   }
@@ -407,6 +513,33 @@
     statusEl.innerHTML = label;
     doSearch();
   }
+
+  function showQR(text){
+    qrLabelEl.textContent = text;
+    qrHolderEl.innerHTML = '';
+    new QRCode(qrHolderEl, {
+      text: text,
+      width: 220,
+      height: 220,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    qrOverlayEl.classList.remove('hidden');
+  }
+
+  function hideQR(){
+    qrOverlayEl.classList.add('hidden');
+  }
+
+  resultsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.qr-btn');
+    if(!btn) return;
+    showQR(btn.dataset.qr);
+  });
+
+  qrOverlayEl.addEventListener('click', (e) => {
+    if(e.target === qrOverlayEl) hideQR();
+  });
+  qrCloseEl.addEventListener('click', hideQR);
 
   searchEl.addEventListener('input', doSearch);
   searchLocationEl.addEventListener('input', doSearch);

@@ -410,6 +410,16 @@
     border-radius:8px;
     overflow:hidden;
   }
+
+  .scan-actions{
+    display:flex;
+    gap:10px;
+  }
+
+  #scan-torch.on{
+    background:var(--accent);
+    color:var(--bg);
+  }
 </style>
 </head>
 <body>
@@ -484,7 +494,12 @@
   <div class="qr-card">
     <div id="scan-region"></div>
     <div class="qr-label" id="scan-hint">Point the camera at a QR code</div>
-    <button class="qr-close" id="scan-close">Cancel</button>
+    <div class="scan-actions">
+      <button class="qr-close" id="scan-torch" hidden>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Torch
+      </button>
+      <button class="qr-close" id="scan-close">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -540,8 +555,10 @@
   const scanOverlayEl = document.getElementById('scan-overlay');
   const scanHintEl = document.getElementById('scan-hint');
   const scanCloseEl = document.getElementById('scan-close');
+  const scanTorchEl = document.getElementById('scan-torch');
   const micTrigger = document.getElementById('mic-trigger');
   let html5QrScanner = null;
+  let torchOn = false;
 
   // ---- Sound: tiny generated tones, no audio files needed ----
   let audioCtx = null;
@@ -717,6 +734,9 @@
 
   function startScan(){
     scanHintEl.textContent = 'Point the camera at a QR code';
+    scanTorchEl.hidden = true;
+    scanTorchEl.classList.remove('on');
+    torchOn = false;
     scanOverlayEl.classList.remove('hidden');
     html5QrScanner = new Html5Qrcode('scan-region');
     html5QrScanner.start(
@@ -724,7 +744,14 @@
       { fps: 10, qrbox: 200 },
       onScanSuccess,
       () => {} // ignore per-frame "no code found" noise
-    ).catch(() => {
+    ).then(() => {
+      try{
+        const torch = html5QrScanner.getRunningTrackCameraCapabilities().torchFeature();
+        scanTorchEl.hidden = !(torch && torch.isSupported());
+      }catch(e){
+        scanTorchEl.hidden = true;
+      }
+    }).catch(() => {
       scanHintEl.textContent = "Couldn't access the camera — check camera permission for this app.";
     });
   }
@@ -736,7 +763,21 @@
       s.stop().then(() => s.clear()).catch(() => {});
     }
     scanOverlayEl.classList.add('hidden');
+    scanTorchEl.hidden = true;
+    scanTorchEl.classList.remove('on');
+    torchOn = false;
   }
+
+  scanTorchEl.addEventListener('click', () => {
+    if(!html5QrScanner) return;
+    try{
+      const torch = html5QrScanner.getRunningTrackCameraCapabilities().torchFeature();
+      torchOn = !torchOn;
+      torch.apply(torchOn).then(() => {
+        scanTorchEl.classList.toggle('on', torchOn);
+      }).catch(() => {});
+    }catch(e){}
+  });
 
   function onScanSuccess(decodedText){
     stopScan();

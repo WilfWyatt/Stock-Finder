@@ -80,10 +80,79 @@
     color:var(--text-dim);
     font-family:'IBM Plex Mono', monospace;
     text-align:right;
-    max-width:180px;
+    max-width:210px;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
+  }
+
+  .status-pill{
+    display:inline-flex;
+    align-items:center;
+    font-size:11.5px;
+    font-weight:600;
+    padding:5px 11px;
+    border-radius:12px;
+    border:1px solid transparent;
+  }
+  .status-pill.tier-green{
+    background:rgba(111,191,115,0.16);
+    border-color:rgba(111,191,115,0.4);
+    color:#6FBF73;
+  }
+  .status-pill.tier-amber{
+    background:rgba(242,169,59,0.16);
+    border-color:rgba(242,169,59,0.4);
+    color:var(--accent);
+  }
+  .status-pill.tier-red{
+    background:rgba(230,90,90,0.16);
+    border-color:rgba(230,90,90,0.4);
+    color:#E65A5A;
+  }
+
+  .warn-card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:26px 22px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    max-width:300px;
+    width:100%;
+    text-align:center;
+  }
+  .warn-icon{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:rgba(230,90,90,0.16);
+    color:#E65A5A;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:700;
+    flex-shrink:0;
+  }
+  .warn-text{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    color:var(--text);
+    line-height:1.5;
+  }
+  .warn-close{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--bg);
+    background:var(--accent);
+    border:none;
+    border-radius:8px;
+    padding:9px 24px;
+    cursor:pointer;
   }
 
   .search-row{
@@ -737,6 +806,14 @@
   </div>
 </div>
 
+<div class="qr-overlay hidden" id="stale-overlay">
+  <div class="warn-card">
+    <div class="warn-icon">!</div>
+    <div class="warn-text">Data is over 4 days old, please check if Data is still valid!</div>
+    <button class="warn-close" id="stale-close">Close</button>
+  </div>
+</div>
+
 <button class="list-fab" id="list-fab" hidden aria-label="Open pick list">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
   <span class="list-fab-count" id="list-fab-count">0</span>
@@ -810,6 +887,8 @@
   const scanOverlayEl = document.getElementById('scan-overlay');
   const scanHintEl = document.getElementById('scan-hint');
   const scanCloseEl = document.getElementById('scan-close');
+  const staleOverlayEl = document.getElementById('stale-overlay');
+  const staleCloseEl = document.getElementById('stale-close');
   const scanTorchEl = document.getElementById('scan-torch');
   const micTrigger = document.getElementById('mic-trigger');
   const clearSearchEl = document.getElementById('clear-search');
@@ -911,8 +990,40 @@
     const wb = XLSX.read(arrayBuffer, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    return rowsToItems(rows);
+    const items = rowsToItems(rows);
+    const createdDate = (wb.Props && wb.Props.CreatedDate instanceof Date) ? wb.Props.CreatedDate : null;
+    return { items, createdDate };
   }
+
+  function formatUKDate(d){
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+  }
+
+  function daysBetween(earlier, later){
+    const d1 = new Date(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
+    const d2 = new Date(later.getFullYear(), later.getMonth(), later.getDate());
+    return Math.round((d2 - d1) / 86400000);
+  }
+
+  function tierForAge(days){
+    if(days <= 2) return 'green';
+    if(days <= 4) return 'amber';
+    return 'red';
+  }
+
+  function showStaleWarning(){
+    staleOverlayEl.classList.remove('hidden');
+  }
+  function hideStaleWarning(){
+    staleOverlayEl.classList.add('hidden');
+  }
+  staleCloseEl.addEventListener('click', hideStaleWarning);
+  staleOverlayEl.addEventListener('click', (e) => {
+    if(e.target === staleOverlayEl) hideStaleWarning();
+  });
 
   let wasNoMatch = false;
 
@@ -1307,12 +1418,18 @@
     const reader = new FileReader();
     reader.onload = (evt) => {
       try{
-        const parsed = parseSpreadsheet(evt.target.result);
-        if(parsed.length === 0){
+        const result = parseSpreadsheet(evt.target.result);
+        if(result.items.length === 0){
           throw new Error('No rows found — check the column headers match.');
         }
-        loadItems(parsed, file.name);
+        const createdDate = result.createdDate || new Date(file.lastModified);
+        const days = daysBetween(createdDate, new Date());
+        const tier = tierForAge(days);
+        statusEl.className = `status status-pill tier-${tier}`;
+        loadItems(result.items, `Database Created: ${formatUKDate(createdDate)}`);
+        if(tier === 'red') showStaleWarning();
       }catch(err){
+        statusEl.className = 'status';
         statusEl.textContent = 'Load failed';
         resultsEl.innerHTML = `<div class="empty"><strong>Couldn't read that file</strong>${escapeHTML(err.message)}</div>`;
       }
@@ -1321,6 +1438,7 @@
   });
 
   // start with sample data so the app is usable immediately
+  statusEl.className = 'status';
   loadItems(rowsToItems(SAMPLE_ROWS), 'demo data<span class="demo-tag">SAMPLE</span>');
 
   // Timed to the new splash sequence: door opens + glass sweeps (0-2s),

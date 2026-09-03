@@ -168,7 +168,6 @@
     cursor:pointer;
   }
   .recent-chip:active{ background:var(--border); }
-  .recent-chip .rc-type{ color:var(--text-dim); margin-right:4px; }
 
   .load-btn{
     background:var(--panel-alt);
@@ -384,12 +383,174 @@
   .qr-btn svg{ width:13px; height:13px; }
   .qr-btn:active{ background:var(--border); }
 
+  .add-list-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:28px;
+    height:28px;
+    border:1px solid var(--accent-dim);
+    border-radius:7px;
+    background:transparent;
+    color:var(--accent);
+    flex-shrink:0;
+    padding:0;
+    cursor:pointer;
+    align-self:center;
+  }
+  .add-list-btn svg{ width:15px; height:15px; }
+  .add-list-btn:active{ background:var(--accent); color:var(--bg); }
+
   .loc-wrap{
     display:flex;
     flex-direction:column;
     align-items:flex-end;
     gap:6px;
     flex-shrink:0;
+  }
+
+  .list-fab{
+    position:fixed;
+    right:20px;
+    bottom:28px;
+    width:52px;
+    height:52px;
+    border-radius:50%;
+    background:var(--accent);
+    color:var(--bg);
+    border:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 4px 16px rgba(0,0,0,0.45);
+    z-index:400;
+    touch-action:none;
+    cursor:grab;
+  }
+  .list-fab svg{ width:22px; height:22px; }
+  .list-fab-count{
+    position:absolute;
+    top:-4px;
+    right:-4px;
+    background:var(--badge);
+    color:var(--badge-text);
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:11px;
+    min-width:18px;
+    height:18px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 4px;
+  }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:28px;
+    transform:translate(-50%, 12px);
+    background:var(--panel-alt);
+    color:var(--text);
+    border:1px solid var(--border);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:10px 18px;
+    border-radius:20px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.25s ease, transform 0.25s ease;
+    z-index:600;
+    max-width:80%;
+    text-align:center;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translate(-50%, 0);
+  }
+
+  .list-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:500;
+  }
+  .list-overlay.hidden{ display:none; }
+
+  .list-panel{
+    background:var(--bg);
+    width:100%;
+    max-width:480px;
+    max-height:75vh;
+    border-radius:16px 16px 0 0;
+    border:1px solid var(--border);
+    border-bottom:none;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .list-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 18px;
+    border-bottom:1px solid var(--border);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:15px;
+  }
+  .list-header-actions{ display:flex; gap:10px; align-items:center; }
+  .list-clear-btn, .list-close-btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    background:var(--panel-alt);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:7px 13px;
+    cursor:pointer;
+  }
+  .list-close-btn{ background:var(--accent); color:var(--bg); border-color:var(--accent); }
+
+  #list-items{
+    overflow-y:auto;
+    padding-bottom:10px;
+  }
+
+  .list-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 18px;
+    border-bottom:1px solid var(--border);
+  }
+  .list-row .row-main{ min-width:0; flex:1; }
+  .list-remove-btn{
+    flex-shrink:0;
+    width:26px;
+    height:26px;
+    border:none;
+    background:transparent;
+    color:var(--text-dim);
+    font-size:18px;
+    line-height:1;
+    cursor:pointer;
+    border-radius:6px;
+  }
+  .list-remove-btn:active{ background:var(--border); }
+
+  .list-empty{
+    padding:40px 24px;
+    text-align:center;
+    color:var(--text-dim);
+    font-size:13px;
   }
 
   .qr-overlay{
@@ -576,6 +737,26 @@
   </div>
 </div>
 
+<button class="list-fab" id="list-fab" hidden aria-label="Open pick list">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+  <span class="list-fab-count" id="list-fab-count">0</span>
+</button>
+
+<div class="toast" id="toast"></div>
+
+<div class="list-overlay hidden" id="list-overlay">
+  <div class="list-panel">
+    <div class="list-header">
+      <span>Pick List (<span id="list-count">0</span>)</span>
+      <div class="list-header-actions">
+        <button class="list-clear-btn" id="list-clear">Clear</button>
+        <button class="list-close-btn" id="list-close">Done</button>
+      </div>
+    </div>
+    <div id="list-items"></div>
+  </div>
+</div>
+
 <script>
   // ---- Column mapping: matches the Pick Spreadsheet headers ----
   // Locator | Item | Item Description | Rev | Primary UOM | On-hand
@@ -602,6 +783,7 @@
   const ITEM_SCAN_PREFIX = 'P';
 
   const QR_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="14" width="2" height="2"/></svg>`;
+  const PLUS_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
 
   // A handful of real-shaped rows so the app is usable before you load your file
   const SAMPLE_ROWS = [
@@ -633,9 +815,19 @@
   const clearSearchEl = document.getElementById('clear-search');
   const clearLocationEl = document.getElementById('clear-location');
   const recentScansEl = document.getElementById('recent-scans');
+  const listFabEl = document.getElementById('list-fab');
+  const listFabCountEl = document.getElementById('list-fab-count');
+  const toastEl = document.getElementById('toast');
+  const listOverlayEl = document.getElementById('list-overlay');
+  const listCountEl = document.getElementById('list-count');
+  const listItemsEl = document.getElementById('list-items');
+  const listClearEl = document.getElementById('list-clear');
+  const listCloseEl = document.getElementById('list-close');
   let html5QrScanner = null;
   let torchOn = false;
   let recentScans = [];
+  let pickList = [];
+  let toastTimer = null;
 
   // ---- Sound: tiny generated tones, no audio files needed ----
   let audioCtx = null;
@@ -750,6 +942,7 @@
           </div>
           <div class="name">${escapeHTML(i.name)}</div>
         </div>
+        ${i.code ? `<button class="add-list-btn" data-code="${escapeHTML(i.code)}" aria-label="Add to pick list">${PLUS_ICON_SVG}</button>` : ''}
         ${i.location ? `
         <div class="loc-wrap">
           <div class="loc-badge">${escapeHTML(i.location)}</div>
@@ -789,9 +982,9 @@
     searchLocationEl.focus();
   });
 
-  function addRecentScan(type, value){
-    recentScans = recentScans.filter(r => !(r.type === type && r.value === value));
-    recentScans.unshift({ type, value });
+  function addRecentScan(value){
+    recentScans = recentScans.filter(v => v !== value);
+    recentScans.unshift(value);
     recentScans = recentScans.slice(0, 5);
     renderRecentScans();
   }
@@ -803,19 +996,15 @@
       return;
     }
     recentScansEl.hidden = false;
-    recentScansEl.innerHTML = recentScans.map(r => `
-      <button class="recent-chip" data-type="${r.type}" data-value="${escapeHTML(r.value)}"><span class="rc-type">${r.type === 'location' ? 'LOC' : 'ITEM'}</span>${escapeHTML(r.value)}</button>
+    recentScansEl.innerHTML = recentScans.map(v => `
+      <button class="recent-chip" data-value="${escapeHTML(v)}">${escapeHTML(v)}</button>
     `).join('');
   }
 
   recentScansEl.addEventListener('click', (e) => {
     const chip = e.target.closest('.recent-chip');
     if(!chip) return;
-    if(chip.dataset.type === 'location'){
-      searchLocationEl.value = chip.dataset.value;
-    } else {
-      searchEl.value = chip.dataset.value;
-    }
+    searchEl.value = chip.dataset.value;
     doSearch();
   });
 
@@ -842,15 +1031,155 @@
   }
 
   resultsEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.qr-btn');
-    if(!btn) return;
-    showQR(btn.dataset.qr);
+    const qrBtn = e.target.closest('.qr-btn');
+    if(qrBtn){
+      showQR(qrBtn.dataset.qr);
+      return;
+    }
+    const addBtn = e.target.closest('.add-list-btn');
+    if(addBtn){
+      addToPickList(addBtn.dataset.code);
+    }
   });
 
   qrOverlayEl.addEventListener('click', (e) => {
     if(e.target === qrOverlayEl) hideQR();
   });
   qrCloseEl.addEventListener('click', hideQR);
+
+  // ---- Pick list ----
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
+  }
+
+  // Sorts by location zone alphabetically (AA, BB, HH, ZZ...), then
+  // numerically within items sharing the same zone (so "0.0.8" sorts
+  // before "0.0.26", not after, as a plain string sort would do).
+  function compareLocations(a, b){
+    const pa = String(a || '').split('.');
+    const pb = String(b || '').split('.');
+    const zoneA = pa[0] || '';
+    const zoneB = pb[0] || '';
+    if(zoneA !== zoneB) return zoneA.localeCompare(zoneB);
+    const restA = pa.slice(1).map(n => parseInt(n, 10) || 0);
+    const restB = pb.slice(1).map(n => parseInt(n, 10) || 0);
+    const len = Math.max(restA.length, restB.length);
+    for(let i = 0; i < len; i++){
+      const va = restA[i] ?? 0;
+      const vb = restB[i] ?? 0;
+      if(va !== vb) return va - vb;
+    }
+    return 0;
+  }
+
+  function addToPickList(code){
+    const item = items.find(i => i.code === code);
+    if(!item) return;
+    if(pickList.some(p => p.code === code)){
+      showToast('Already added');
+      return;
+    }
+    pickList.push(item);
+    updateFab();
+    showToast('Added to list');
+  }
+
+  function updateFab(){
+    listFabEl.hidden = pickList.length === 0;
+    listFabCountEl.textContent = pickList.length;
+    listCountEl.textContent = pickList.length;
+  }
+
+  function renderPickList(){
+    listCountEl.textContent = pickList.length;
+    if(pickList.length === 0){
+      listItemsEl.innerHTML = `<div class="list-empty">Nothing on the list yet — tap the + next to an item to add it.</div>`;
+      return;
+    }
+    const sorted = [...pickList].sort((a, b) => compareLocations(a.location, b.location));
+    listItemsEl.innerHTML = sorted.map(i => `
+      <div class="list-row">
+        <div class="row-main">
+          <div class="code-line">
+            <span class="code">${escapeHTML(i.code)}</span>
+            ${i.uom ? `<span class="uom-badge">${escapeHTML(i.uom)}</span>` : ''}
+          </div>
+          <div class="name">${escapeHTML(i.name)}</div>
+        </div>
+        ${i.location ? `<div class="loc-badge">${escapeHTML(i.location)}</div>` : ''}
+        <button class="list-remove-btn" data-code="${escapeHTML(i.code)}" aria-label="Remove from list">&times;</button>
+      </div>
+    `).join('');
+  }
+
+  listItemsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.list-remove-btn');
+    if(!btn) return;
+    pickList = pickList.filter(p => p.code !== btn.dataset.code);
+    renderPickList();
+    updateFab();
+  });
+
+  listClearEl.addEventListener('click', () => {
+    pickList = [];
+    renderPickList();
+    updateFab();
+    hideListPanel();
+  });
+
+  function openListPanel(){
+    renderPickList();
+    listOverlayEl.classList.remove('hidden');
+  }
+  function hideListPanel(){
+    listOverlayEl.classList.add('hidden');
+  }
+  listCloseEl.addEventListener('click', hideListPanel);
+  listOverlayEl.addEventListener('click', (e) => {
+    if(e.target === listOverlayEl) hideListPanel();
+  });
+
+  // Draggable FAB — a tap (no meaningful movement) opens the list;
+  // a drag repositions it instead.
+  let fabDragging = false;
+  let fabMoved = false;
+  let fabStartX = 0, fabStartY = 0, fabOrigX = 0, fabOrigY = 0;
+
+  listFabEl.addEventListener('pointerdown', (e) => {
+    fabDragging = true;
+    fabMoved = false;
+    fabStartX = e.clientX;
+    fabStartY = e.clientY;
+    const rect = listFabEl.getBoundingClientRect();
+    fabOrigX = rect.left;
+    fabOrigY = rect.top;
+    listFabEl.setPointerCapture(e.pointerId);
+  });
+
+  listFabEl.addEventListener('pointermove', (e) => {
+    if(!fabDragging) return;
+    const dx = e.clientX - fabStartX;
+    const dy = e.clientY - fabStartY;
+    if(Math.abs(dx) > 6 || Math.abs(dy) > 6) fabMoved = true;
+    if(fabMoved){
+      const maxX = window.innerWidth - listFabEl.offsetWidth - 8;
+      const maxY = window.innerHeight - listFabEl.offsetHeight - 8;
+      const newX = Math.min(Math.max(8, fabOrigX + dx), maxX);
+      const newY = Math.min(Math.max(8, fabOrigY + dy), maxY);
+      listFabEl.style.left = newX + 'px';
+      listFabEl.style.top = newY + 'px';
+      listFabEl.style.right = 'auto';
+      listFabEl.style.bottom = 'auto';
+    }
+  });
+
+  listFabEl.addEventListener('pointerup', () => {
+    fabDragging = false;
+    if(!fabMoved) openListPanel();
+  });
 
   function startScan(){
     scanHintEl.textContent = 'Point the camera at a QR code';
@@ -906,14 +1235,13 @@
     if(decodedText.indexOf(LOCATION_QR_PREFIX) === 0){
       const loc = decodedText.slice(LOCATION_QR_PREFIX.length);
       searchLocationEl.value = loc;
-      addRecentScan('location', loc);
     } else if(decodedText.indexOf(ITEM_SCAN_PREFIX) === 0){
       const code = decodedText.slice(ITEM_SCAN_PREFIX.length);
       searchEl.value = code;
-      addRecentScan('code', code);
+      addRecentScan(code);
     } else {
       searchEl.value = decodedText;
-      addRecentScan('code', decodedText);
+      addRecentScan(decodedText);
     }
     doSearch();
   }

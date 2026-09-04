@@ -806,11 +806,11 @@
   </div>
 </div>
 
-<div class="qr-overlay hidden" id="stale-overlay">
+<div class="qr-overlay hidden" id="warn-overlay">
   <div class="warn-card">
     <div class="warn-icon">!</div>
-    <div class="warn-text">Data is over 4 days old, please check if Data is still valid!</div>
-    <button class="warn-close" id="stale-close">Close</button>
+    <div class="warn-text" id="warn-text">Data is over 2 days old, please check if Data is still valid!</div>
+    <button class="warn-close" id="warn-close">Close</button>
   </div>
 </div>
 
@@ -859,6 +859,11 @@
   // letter ever turns up on a different label type.
   const ITEM_SCAN_PREFIX = 'P';
 
+  // The pallet label's LPN barcode (not useful for search) decodes with a
+  // "JBRG" prefix — scans starting with this get ignored entirely rather
+  // than treated as an item code. Based on one label so far.
+  const LPN_BLOCK_PREFIX = 'JBRG';
+
   const QR_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="14" width="2" height="2"/></svg>`;
   const PLUS_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
 
@@ -887,8 +892,9 @@
   const scanOverlayEl = document.getElementById('scan-overlay');
   const scanHintEl = document.getElementById('scan-hint');
   const scanCloseEl = document.getElementById('scan-close');
-  const staleOverlayEl = document.getElementById('stale-overlay');
-  const staleCloseEl = document.getElementById('stale-close');
+  const warnOverlayEl = document.getElementById('warn-overlay');
+  const warnTextEl = document.getElementById('warn-text');
+  const warnCloseEl = document.getElementById('warn-close');
   const scanTorchEl = document.getElementById('scan-torch');
   const micTrigger = document.getElementById('mic-trigger');
   const clearSearchEl = document.getElementById('clear-search');
@@ -1009,20 +1015,21 @@
   }
 
   function tierForAge(days){
-    if(days <= 2) return 'green';
-    if(days <= 4) return 'amber';
+    if(days <= 1) return 'green';
+    if(days <= 2) return 'amber';
     return 'red';
   }
 
-  function showStaleWarning(){
-    staleOverlayEl.classList.remove('hidden');
+  function showScanWarning(message){
+    warnTextEl.textContent = message;
+    warnOverlayEl.classList.remove('hidden');
   }
-  function hideStaleWarning(){
-    staleOverlayEl.classList.add('hidden');
+  function hideScanWarning(){
+    warnOverlayEl.classList.add('hidden');
   }
-  staleCloseEl.addEventListener('click', hideStaleWarning);
-  staleOverlayEl.addEventListener('click', (e) => {
-    if(e.target === staleOverlayEl) hideStaleWarning();
+  warnCloseEl.addEventListener('click', hideScanWarning);
+  warnOverlayEl.addEventListener('click', (e) => {
+    if(e.target === warnOverlayEl) hideScanWarning();
   });
 
   let wasNoMatch = false;
@@ -1080,6 +1087,7 @@
       filtered = filtered.filter(i => i.location.toLowerCase().includes(loc));
     }
     render(filtered);
+    return filtered;
   }
 
   clearSearchEl.addEventListener('click', () => {
@@ -1126,7 +1134,9 @@
   }
 
   function showQR(text){
-    qrLabelEl.textContent = text;
+    qrLabelEl.textContent = text.indexOf(LOCATION_QR_PREFIX) === 0
+      ? `PICK ${text.slice(LOCATION_QR_PREFIX.length)}`
+      : text;
     qrHolderEl.innerHTML = '';
     new QRCode(qrHolderEl, {
       text: text,
@@ -1340,21 +1350,37 @@
   });
 
   function onScanSuccess(decodedText){
+    if(decodedText.indexOf(LPN_BLOCK_PREFIX) === 0){
+      // Not a useful code (the pallet label's LPN barcode) — ignore it and
+      // keep the camera running rather than treating it as an item code.
+      scanHintEl.textContent = "That's the pallet LPN barcode — scan the Item barcode instead.";
+      return;
+    }
+
     stopScan();
     playScanBeep();
     if(navigator.vibrate) navigator.vibrate(60);
+
     if(decodedText.indexOf(LOCATION_QR_PREFIX) === 0){
       const loc = decodedText.slice(LOCATION_QR_PREFIX.length);
       searchLocationEl.value = loc;
-    } else if(decodedText.indexOf(ITEM_SCAN_PREFIX) === 0){
-      const code = decodedText.slice(ITEM_SCAN_PREFIX.length);
-      searchEl.value = code;
-      addRecentScan(code);
-    } else {
-      searchEl.value = decodedText;
-      addRecentScan(decodedText);
+      const results = doSearch();
+      if(items.length > 0 && results.length === 0){
+        showScanWarning('No assigned stock to location!');
+      }
+      return;
     }
+
+    const code = decodedText.indexOf(ITEM_SCAN_PREFIX) === 0
+      ? decodedText.slice(ITEM_SCAN_PREFIX.length)
+      : decodedText;
+    searchEl.value = code;
+    addRecentScan(code);
     doSearch();
+    const found = items.find(i => i.code.toLowerCase() === code.toLowerCase());
+    if(found && !found.location){
+      showScanWarning('No location assigned to item!');
+    }
   }
 
   scanTrigger.addEventListener('click', startScan);
@@ -1427,7 +1453,7 @@
         const tier = tierForAge(days);
         statusEl.className = `status status-pill tier-${tier}`;
         loadItems(result.items, `Database Created: ${formatUKDate(createdDate)}`);
-        if(tier === 'red') showStaleWarning();
+        if(tier === 'red') showScanWarning('Data is over 2 days old, please check if Data is still valid!');
       }catch(err){
         statusEl.className = 'status';
         statusEl.textContent = 'Load failed';

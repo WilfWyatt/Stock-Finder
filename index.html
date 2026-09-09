@@ -256,7 +256,54 @@
     background:var(--border);
   }
 
-  #file-input{ display:none; }
+  .load-menu-wrap{
+    position:relative;
+    flex-shrink:0;
+  }
+
+  .load-menu{
+    position:absolute;
+    top:calc(100% + 6px);
+    right:0;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    z-index:50;
+    min-width:190px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  }
+  .load-menu.hidden{ display:none; }
+
+  .load-menu-item{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:2px;
+    width:100%;
+    padding:10px 14px;
+    background:transparent;
+    border:none;
+    border-bottom:1px solid var(--border);
+    text-align:left;
+    cursor:pointer;
+  }
+  .load-menu-item:last-child{ border-bottom:none; }
+  .load-menu-item:active{ background:var(--panel-alt); }
+
+  .load-menu-title{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--text);
+  }
+  .load-menu-sub{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:11px;
+    color:var(--text-dim);
+  }
+
+  #file-input, #usage-file-input{ display:none; }
 
   main{
     flex:1;
@@ -435,7 +482,7 @@
 
   .code-line{ flex-wrap:wrap; }
 
-  .qr-btn{
+  .qr-btn, .info-btn{
     display:inline-flex;
     align-items:center;
     justify-content:center;
@@ -449,8 +496,8 @@
     padding:0;
     cursor:pointer;
   }
-  .qr-btn svg{ width:13px; height:13px; }
-  .qr-btn:active{ background:var(--border); }
+  .qr-btn svg, .info-btn svg{ width:13px; height:13px; }
+  .qr-btn:active, .info-btn:active{ background:var(--border); }
 
   .add-list-btn{
     display:inline-flex;
@@ -599,21 +646,58 @@
     gap:10px;
     padding:12px 18px;
     border-bottom:1px solid var(--border);
+    overflow:hidden;
+    max-height:200px;
+    transition:
+      transform 0.25s ease,
+      opacity 0.25s ease,
+      max-height 0.3s ease 0.25s,
+      padding-top 0.3s ease 0.25s,
+      padding-bottom 0.3s ease 0.25s,
+      border-color 0.3s ease 0.25s;
+  }
+  .list-row.removing{
+    transform:translateX(-110%);
+    opacity:0;
+    max-height:0;
+    padding-top:0;
+    padding-bottom:0;
+    border-color:transparent;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .list-row{
+      transition:
+        opacity 0.01s linear,
+        max-height 0.01s linear,
+        padding-top 0.01s linear,
+        padding-bottom 0.01s linear,
+        border-color 0.01s linear;
+    }
   }
   .list-row .row-main{ min-width:0; flex:1; }
-  .list-remove-btn{
+  .list-check-btn{
     flex-shrink:0;
     width:26px;
     height:26px;
-    border:none;
+    border:2px solid var(--border);
+    border-radius:7px;
     background:transparent;
-    color:var(--text-dim);
-    font-size:18px;
-    line-height:1;
+    color:transparent;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
     cursor:pointer;
-    border-radius:6px;
+    transition:background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
-  .list-remove-btn:active{ background:var(--border); }
+  .list-check-btn:active{ background:var(--panel-alt); }
+  .list-check-btn.checked{
+    background:var(--badge);
+    border-color:var(--badge);
+    color:var(--badge-text);
+  }
+  .list-check-btn:disabled{ cursor:default; }
+  .list-check-icon{ width:15px; height:15px; }
 
   .list-empty{
     padding:40px 24px;
@@ -672,6 +756,56 @@
     border-radius:8px;
     padding:9px 20px;
     cursor:pointer;
+  }
+
+  .info-header{
+    text-align:center;
+    width:100%;
+  }
+  .info-header .code{
+    display:block;
+    font-size:16px;
+    margin-bottom:4px;
+  }
+  .info-header .name{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12.5px;
+    color:#5A5E63;
+    line-height:1.4;
+  }
+  .info-stats{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .info-stat-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    border-bottom:1px solid #E2DFD6;
+    padding-bottom:10px;
+  }
+  .info-stat-row:last-child{ border-bottom:none; padding-bottom:0; }
+  .info-stat-label{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12.5px;
+    color:#6E7278;
+  }
+  .info-stat-value{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:16px;
+    color:#14171A;
+    white-space:nowrap;
+  }
+  .info-empty{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    color:#6E7278;
+    text-align:center;
+    line-height:1.6;
   }
 
   .scan-btn{
@@ -764,8 +898,21 @@
       <button class="scan-btn" id="mic-trigger" aria-label="Search by voice">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
       </button>
-      <button class="load-btn" id="load-trigger">Load File</button>
+      <div class="load-menu-wrap">
+        <button class="load-btn" id="load-trigger">Load File</button>
+        <div class="load-menu hidden" id="load-menu">
+          <button class="load-menu-item" id="load-locator-item">
+            <span class="load-menu-title">Locator</span>
+            <span class="load-menu-sub">Stock put-away list</span>
+          </button>
+          <button class="load-menu-item" id="load-usage-item">
+            <span class="load-menu-title">Usage</span>
+            <span class="load-menu-sub">On-hand &amp; weekly usage</span>
+          </button>
+        </div>
+      </div>
       <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+      <input type="file" id="usage-file-input" accept=".xlsx,.xls,.csv">
     </div>
     <div class="search-row secondary">
       <div class="search-wrap">
@@ -790,6 +937,17 @@
     <div id="qr-canvas-holder"></div>
     <div class="qr-label" id="qr-label"></div>
     <button class="qr-close" id="qr-close">Close</button>
+  </div>
+</div>
+
+<div class="qr-overlay hidden" id="info-overlay">
+  <div class="qr-card">
+    <div class="info-header">
+      <span class="code" id="info-code"></span>
+      <span class="name" id="info-name"></span>
+    </div>
+    <div class="info-stats" id="info-stats"></div>
+    <button class="qr-close" id="info-close">Close</button>
   </div>
 </div>
 
@@ -866,6 +1024,19 @@
 
   const QR_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="14" width="2" height="2"/></svg>`;
   const PLUS_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const INFO_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+  const CHECK_ICON_SVG = `<svg class="list-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+  // ---- Usage list: a separate spreadsheet (On-hand + weekly usage),
+  // loaded via Load File > Usage and matched onto the main item list by
+  // Item code. Only the BRG site column is used since that's the only
+  // one populated for this warehouse — the NDC/DNB columns in that file
+  // are other sites and usually just show "-".
+  const USAGE_COLUMNS = {
+    code: 'Item',
+    onHand: 'On-hand',
+    weeklyUsage: 'Weekly Avg Usage BRG'
+  };
 
   // A handful of real-shaped rows so the app is usable before you load your file
   const SAMPLE_ROWS = [
@@ -877,6 +1048,8 @@
   ];
 
   let items = [];
+  let usageData = {};
+  let usageLoaded = false;
   const searchEl = document.getElementById('search');
   const searchLocationEl = document.getElementById('search-location');
   const resultsEl = document.getElementById('results');
@@ -884,6 +1057,15 @@
   const statusEl = document.getElementById('status');
   const loadTrigger = document.getElementById('load-trigger');
   const fileInput = document.getElementById('file-input');
+  const loadMenuEl = document.getElementById('load-menu');
+  const loadLocatorItem = document.getElementById('load-locator-item');
+  const loadUsageItem = document.getElementById('load-usage-item');
+  const usageFileInput = document.getElementById('usage-file-input');
+  const infoOverlayEl = document.getElementById('info-overlay');
+  const infoCodeEl = document.getElementById('info-code');
+  const infoNameEl = document.getElementById('info-name');
+  const infoStatsEl = document.getElementById('info-stats');
+  const infoCloseEl = document.getElementById('info-close');
   const qrOverlayEl = document.getElementById('qr-overlay');
   const qrHolderEl = document.getElementById('qr-canvas-holder');
   const qrLabelEl = document.getElementById('qr-label');
@@ -1001,6 +1183,24 @@
     return { items, createdDate };
   }
 
+  function parseUsageSpreadsheet(arrayBuffer){
+    const wb = XLSX.read(arrayBuffer, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    const map = {};
+    rows.forEach(r => {
+      const code = String(r[USAGE_COLUMNS.code] ?? '').trim();
+      if(!code) return;
+      const onHandRaw = r[USAGE_COLUMNS.onHand];
+      const usageRaw = r[USAGE_COLUMNS.weeklyUsage];
+      map[code.toUpperCase()] = {
+        onHand: (onHandRaw === '' || onHandRaw === undefined || onHandRaw === '-') ? null : onHandRaw,
+        weeklyUsage: (usageRaw === '' || usageRaw === undefined || usageRaw === '-') ? null : usageRaw
+      };
+    });
+    return map;
+  }
+
   function formatUKDate(d){
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1057,6 +1257,7 @@
             <span class="code">${escapeHTML(i.code)}</span>
             ${i.uom ? `<span class="uom-badge">${escapeHTML(i.uom)}</span>` : ''}
             ${i.code ? `<button class="qr-btn" data-qr="${escapeHTML(i.code)}" aria-label="Show QR for item code">${QR_ICON_SVG}</button>` : ''}
+            ${i.code ? `<button class="info-btn" data-info="${escapeHTML(i.code)}" aria-label="Show usage info">${INFO_ICON_SVG}</button>` : ''}
           </div>
           <div class="name">${escapeHTML(i.name)}</div>
         </div>
@@ -1151,7 +1352,49 @@
     qrOverlayEl.classList.add('hidden');
   }
 
+  function formatUsageNumber(n){
+    if(n === null || n === undefined || n === '') return '—';
+    const num = Number(n);
+    if(Number.isNaN(num)) return String(n);
+    return Number.isInteger(num) ? String(num) : num.toFixed(1);
+  }
+
+  function showInfo(code){
+    const item = items.find(i => i.code === code);
+    infoCodeEl.textContent = code;
+    infoNameEl.textContent = item ? item.name : '';
+
+    if(!usageLoaded){
+      infoStatsEl.innerHTML = `<div class="info-empty">No usage data loaded yet.<br>Tap Load File &rarr; Usage to add it.</div>`;
+    }else{
+      const stats = usageData[code.toUpperCase()];
+      if(!stats){
+        infoStatsEl.innerHTML = `<div class="info-empty">No usage data for this item.</div>`;
+      }else{
+        infoStatsEl.innerHTML = `
+          <div class="info-stat-row"><span class="info-stat-label">On-hand</span><span class="info-stat-value">${escapeHTML(formatUsageNumber(stats.onHand))}</span></div>
+          <div class="info-stat-row"><span class="info-stat-label">Weekly avg usage (BRG)</span><span class="info-stat-value">${escapeHTML(formatUsageNumber(stats.weeklyUsage))}</span></div>
+        `;
+      }
+    }
+    infoOverlayEl.classList.remove('hidden');
+  }
+
+  function hideInfo(){
+    infoOverlayEl.classList.add('hidden');
+  }
+
+  infoCloseEl.addEventListener('click', hideInfo);
+  infoOverlayEl.addEventListener('click', (e) => {
+    if(e.target === infoOverlayEl) hideInfo();
+  });
+
   resultsEl.addEventListener('click', (e) => {
+    const infoBtn = e.target.closest('.info-btn');
+    if(infoBtn){
+      showInfo(infoBtn.dataset.info);
+      return;
+    }
     const qrBtn = e.target.closest('.qr-btn');
     if(qrBtn){
       showQR(qrBtn.dataset.qr);
@@ -1231,17 +1474,37 @@
           <div class="name">${escapeHTML(i.name)}</div>
         </div>
         ${i.location ? `<div class="loc-badge">${escapeHTML(i.location)}</div>` : ''}
-        <button class="list-remove-btn" data-code="${escapeHTML(i.code)}" aria-label="Remove from list">&times;</button>
+        <button class="list-check-btn" data-code="${escapeHTML(i.code)}" aria-label="Mark as put away">${CHECK_ICON_SVG}</button>
       </div>
     `).join('');
   }
 
+  const PREFERS_REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
   listItemsEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.list-remove-btn');
-    if(!btn) return;
-    pickList = pickList.filter(p => p.code !== btn.dataset.code);
-    renderPickList();
-    updateFab();
+    const btn = e.target.closest('.list-check-btn');
+    if(!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add('checked');
+    const row = btn.closest('.list-row');
+    const code = btn.dataset.code;
+
+    const finish = () => {
+      pickList = pickList.filter(p => p.code !== code);
+      renderPickList();
+      updateFab();
+      if(pickList.length === 0) showToast('All items put away');
+    };
+
+    if(PREFERS_REDUCED_MOTION){
+      finish();
+      return;
+    }
+
+    // Tick shows first, then the row slides out and fades (0.25s), then it
+    // collapses — which is what pushes the rows below it up into place.
+    setTimeout(() => { if(row) row.classList.add('removing'); }, 150);
+    setTimeout(finish, 700);
   });
 
   listClearEl.addEventListener('click', () => {
@@ -1436,7 +1699,45 @@
 
   searchEl.addEventListener('input', doSearch);
   searchLocationEl.addEventListener('input', doSearch);
-  loadTrigger.addEventListener('click', () => fileInput.click());
+  loadTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    loadMenuEl.classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e) => {
+    if(loadMenuEl.classList.contains('hidden')) return;
+    if(loadMenuEl.contains(e.target) || e.target === loadTrigger) return;
+    loadMenuEl.classList.add('hidden');
+  });
+  loadLocatorItem.addEventListener('click', () => {
+    loadMenuEl.classList.add('hidden');
+    fileInput.click();
+  });
+  loadUsageItem.addEventListener('click', () => {
+    loadMenuEl.classList.add('hidden');
+    usageFileInput.click();
+  });
+
+  usageFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const map = parseUsageSpreadsheet(evt.target.result);
+        const count = Object.keys(map).length;
+        if(count === 0){
+          throw new Error('No rows found — check the column headers match.');
+        }
+        usageData = map;
+        usageLoaded = true;
+        showToast(`Usage data loaded (${count} items)`);
+      }catch(err){
+        showToast("Couldn't read usage file");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
 
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];

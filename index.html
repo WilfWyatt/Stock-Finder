@@ -25,6 +25,8 @@
     --accent-dim:#C98A2E;
     --badge:#4FD6C0;
     --badge-text:#0B1512;
+    --icon-border:#4B535C;
+    --icon-color:#B9C0C7;
   }
 
   @media (prefers-color-scheme: light){
@@ -35,6 +37,8 @@
       --border:#DBD7CC;
       --text:#1C1F22;
       --text-dim:#6E7278;
+      --icon-border:#DBD7CC;
+      --icon-color:#6E7278;
     }
   }
 
@@ -404,7 +408,7 @@
     justify-content:center;
     gap:16px;
     z-index:9999;
-    animation: splash-out 0.5s ease 6.1s forwards;
+    animation: splash-out 0.5s ease 5.0s forwards;
   }
 
   .splash-stage{
@@ -437,7 +441,7 @@
     top:0; left:0;
     width:56px;
     height:56px;
-    animation: glass-move 2s cubic-bezier(.45,0,.2,1) forwards;
+    animation: glass-move 1.6s cubic-bezier(.45,0,.2,1) forwards;
   }
 
   .splash-logo{
@@ -448,7 +452,7 @@
     color:var(--accent);
     opacity:0;
     transform: translateX(-260px);
-    animation: logo-slide-in 1.1s cubic-bezier(.16,.84,.44,1) 4.5s forwards;
+    animation: logo-slide-in 1.1s cubic-bezier(.16,.84,.44,1) 3.4s forwards;
   }
 
   @keyframes shutter-open{
@@ -488,10 +492,10 @@
     justify-content:center;
     width:23px;
     height:23px;
-    border:1px solid var(--border);
+    border:1px solid var(--icon-border);
     border-radius:6px;
     background:var(--panel-alt);
-    color:var(--text-dim);
+    color:var(--icon-color);
     flex-shrink:0;
     padding:0;
     cursor:pointer;
@@ -679,7 +683,7 @@
     flex-shrink:0;
     width:26px;
     height:26px;
-    border:2px solid var(--border);
+    border:2px solid var(--icon-border);
     border-radius:7px;
     background:transparent;
     color:transparent;
@@ -1768,15 +1772,16 @@
   statusEl.className = 'status';
   loadItems(rowsToItems(SAMPLE_ROWS), 'demo data<span class="demo-tag">SAMPLE</span>');
 
-  // Timed to the new splash sequence: door opens + glass sweeps (0-2s),
-  // boxes pop in one at a time (2.0s/2.7s/3.4s), "WyApps" slides in (4.5s).
+  // Timed to the new splash sequence: door opens + glass sweeps (0-1.6s),
+  // boxes pop in one at a time (2.0s/2.7s/3.4s), "WyApps" slides in at the
+  // same moment as the last crate pop (3.4s).
   // May be silently blocked by the browser on the very first open or two
   // (autoplay policy) until it's seen you interact with the app at least
   // once — the animation itself always plays regardless.
   setTimeout(() => playPopSound(1), 2000);
   setTimeout(() => playPopSound(1.15), 2700);
   setTimeout(() => playPopSound(1.3), 3400);
-  setTimeout(playSplashFlourish, 4500);
+  setTimeout(playSplashFlourish, 3400);
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
